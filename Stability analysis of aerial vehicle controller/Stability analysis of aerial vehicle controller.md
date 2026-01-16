@@ -1,3 +1,13 @@
+<!-- ---
+math:
+  enable: true
+  engine: mathjax
+  mathjax:
+    tex-extensions:
+      - autoload-all.js
+    tags: 'ams'
+--- -->
+
 # <center>Stability analysis of aerial vehicle controller
 <center>Dzxion</center>
 
@@ -72,7 +82,7 @@ $$\dot{x} = f(t,x,\gamma(t,x))$$ -->
 
 ### Notation
 
-* $p$ 记为飞行器的位置
+* $x$ 记为飞行器的位置
 * $v$ 记为飞行器的速度
 <!-- * $i_d$ 记为$d$轴电流
 * $B$ 记为粘性阻尼系数
@@ -92,13 +102,16 @@ $$\dot{x} = f(t,x,\gamma(t,x))$$ -->
 ### Dynamic
 系统动力学表示如下：
 $$
+\begin{equation}
 \begin{aligned}
-\dot{p} &= v\\
+\dot{x} &= v\\
 % T_e &= \frac{3}{2}n[\phi_m i_q-(L_q-L_d)i_d i_q]\\
 % \dot{i}_d &= -\frac{R}{L_d}i_d + nw\frac{L_q}{L_d}i_q+\frac{1}{L_d}v_d\\
 % \dot{i}_q &= -nw\frac{L_d}{L_q}i_d - \frac{R}{L_q}i_q-\frac{n\phi_m}{L_q}w+\frac{1}{L_q}v_q
 % \tag{2.1}
 \end{aligned}
+% \label{eq:energy-mass}
+\end{equation}
 $$
 <!-- 基于上述模型，做进一步简化，我们令$i_d\equiv0$，方程如下：
 $$
@@ -120,27 +133,22 @@ $$ -->
 <!-- 飞行器的控制目标：
 * 镇定 $v_q$
 
-我们设计的控制器分为两部分：电流控制器和电压控制器，电流控制器用于控制电压控制器输出的给定电流。电压控制器用于输出给定电流。只要给定电流等于平衡点对应的电流，就能实现对系统平衡点的镇定。
+我们设计的控制器分为两部分：电流控制器和电压控制器，电流控制器用于控制电压控制器输出的给定电流。电压控制器用于输出给定电流。只要给定电流等于平衡点对应的电流，就能实现对系统平衡点的镇定。 -->
 
-定义给定目标$v_q^{ref}$，虚拟输入$i_q^{ref}$，引入积分控制
+定义参考位置 $x_r$ 及其导数 $v_r = \dot{x}_r$，误差位置变量 $\widetilde{x} = x - x_r$，假设速度 $v$ 为虚拟控制变量，参数$k$，控制律设计如下：
 $$
+\begin{equation}
 \begin{aligned}
-\dot{\sigma}_i &= i_q - i_q^{ref} \\
-\dot{\sigma}_v &= v_q - v_q^{ref}
+v &= -k\widetilde{x} + v_r\\
 \end{aligned}
+\end{equation}
+% \tag{3.1}
 $$
-定义参数$k_p^i、k_i^i、k_i^v$，控制律设计如下：
-$$
-\begin{aligned}
-v_q &= -k_p^i*(i_q-i_q^{ref})-k_i^i\sigma_i\\
-i_q^{ref} &= \frac{v_q^{ref}-\phi_m n w}{R}-k_i^v \sigma_v
-\end{aligned}\tag{3.1}
-$$ -->
 
 ## Stability Analysis
 
-<!-- 本节中，将给出动力电调开环和闭环系统的稳定性结果。
-设开环系统的平衡点$(w,i_q,v_q)=(w^*,i_q^*,v_q^∗)=(w^*,i_q^*,v_q^{ref})$。开环系统平衡点由下式求得
+本节中，将给出飞行器闭环系统的稳定性结果。
+<!-- 设开环系统的平衡点$(w,i_q,v_q)=(w^*,i_q^*,v_q^∗)=(w^*,i_q^*,v_q^{ref})$。开环系统平衡点由下式求得
 $$
 \begin{aligned}
 0 &= -\frac{B}{J}w^*+\frac{K_t}{J}i_q^*-\frac{c}{J}{w^*}^2\\
@@ -165,50 +173,37 @@ A_{ol} = \left[
 \begin{array}{c}
 -\frac{B+2cw^*}{J} & \frac{Kt}{J}\\
 -\frac{n\phi_m}{Lq} & -\frac{R}{Lq}
-\end{array}\right]$
+\end{array}\right]$ -->
 
-**Proposition 1** *考虑动力学方程（2.3），开环系统的平衡点$(w,i_q,v_q)=(w^*,i_q^*,v_q^∗)=(w^*,i_q^*,v_q^{ref})$是（局部）指数稳定的*
+**Proposition 1** *考虑动力学方程（1）以及控制律（2），误差系统的平衡点 $\widetilde{x}=0$ 是（全局）指数稳定的*
 
-**Proof:** 为了证明平衡点指数稳定，根据定理4.7，只需证明$A_{ol}$为Hurwitz矩阵。 
+**Proof:** 闭环系统的方程为
 
-设闭环系统的平衡点$(w,i_q,v_q,\sigma_i,\sigma_v)=(w^*,i_q^*,v_q^∗,\sigma_i^*,\sigma_v^*)$。闭环系统平衡点由下式求得
 $$
-\begin{aligned}
-0 &= -\frac{B}{J}w^*+\frac{K_t}{J}i_q^*-\frac{c}{J}{w^*}^2\\
-0 &= - \frac{R}{L_q}i_q^*-\frac{n\phi_m}{L_q}w^*+\frac{1}{L_q}v_q^*\\
-0 &= i_q^* - {i_q^{ref}}^*\\
-0 &= v_q^* - v_q^{ref}\\
-v_q^* &= -k_i^i\sigma_i^*\\
-{i_q^{ref}}^* &= \frac{v_q^{ref}-\phi_m n w^*}{R}-k_i^v \sigma_v^*\tag{4.3}
-\end{aligned}
+\dot{\widetilde{x}} = v - v_r
 $$
-通过坐标变换
-$$w^\delta=w-w^*,i_q^\delta=i_q-i_q^*,\sigma_{i}^\delta=\sigma_{i}-\sigma_{i}^*,\sigma_{v}^\delta=\sigma_{v}-\sigma_{v}^*$$
-结合式（2.3）和（4.3）不难得出误差系统方程
+根据控制律（2）可得
 $$
-\begin{aligned}
-\dot{w}^\delta &= -\frac{B}{J}w^\delta+\frac{K_t}{J}i_q^\delta-\frac{c}{J}{w^\delta}^2-\frac{2cw^*}{J}{w^\delta}\\
-\dot{i}_q^\delta &= -(\frac{k_p^i}{R}+1)\frac{n\phi_m}{L_q}w^\delta - \frac{R+k_p^i}{L_q}i_q^\delta - \frac{k_i^i}{L_q}\sigma_{i}^\delta - \frac{k_p^i k_i^v}{L_q}\sigma_{v}^\delta\\
-\dot{\sigma}_i^\delta &= \frac{n\phi_m}{R}w^\delta+i_q^\delta + k_i^v\sigma_{v}^\delta\\
-\dot{\sigma}_v^\delta &= -\frac{k_p^i n\phi_m}{R}w^\delta-k_p^i i_q^\delta -k_i^i\sigma_{i}^\delta - k_p^i k_i^v\sigma_{v}^\delta\\\tag{4.3}
-\end{aligned}
+\dot{\widetilde{x}} = -k\widetilde{x}
 $$
-对误差系统在原点 $(w^\delta,i_q^\delta,\sigma_i^\delta,\sigma_v^\delta) = (0,0,0,0)$ 线性化可得到
+现考虑以下候选李雅普诺夫函数
 $$
-\dot{x} = A_{cl}x
+V \triangleq \frac{1}{2} \widetilde{x}
 $$
-其中，$x=[w^\delta,i_q^\delta,,\sigma_i^\delta,\sigma_v^\delta]^T$，$
+对 $V$ 求导
+<!-- $$
 A_{cl} = \left[
 \begin{array}{c}
 -\frac{B+2cw^*}{J} & \frac{Kt}{J} & 0 & 0\\
 -(\frac{k_p^i}{R}+1)\frac{n\phi_m}{Lq} & -\frac{R+k_p^i} {Lq} & -\frac{k_i^i}{L_q} & - \frac{k_p^i k_i^v}{L_q}\\
 \frac{n\phi_m}{R} & 1 & 0 & k_i^v\\
 -\frac{k_p^i n\phi_m}{R} & -k_p^i & -k_i^i & -k_p^i k_i^v\\
-\end{array}\right]$
+\end{array}\right]
+$$ -->
 
-**Proposition 2** *考虑动力学方程（2.3）以及控制律（3.1），闭环系统的平衡点$(w,i_q,v_q,\sigma_i,\sigma_v)=(w^*,i_q^*,v_q^∗,\sigma_i^*,\sigma_v^*)$是（局部）指数稳定的*
+<!-- **Proposition 2** *考虑动力学方程（2.3）以及控制律（3.1），闭环系统的平衡点$(w,i_q,v_q,\sigma_i,\sigma_v)=(w^*,i_q^*,v_q^∗,\sigma_i^*,\sigma_v^*)$是（局部）指数稳定的*
 
-**Proof:** 为了证明平衡点指数稳定，根据定理4.7，只需证明$A_{cl}$为Hurwitz矩阵。  -->
+**Proof:** 为了证明平衡点指数稳定，根据定理4.7，只需证明$A_{cl}$为Hurwitz矩阵。 -->
 
 ## Simulation Results
 
