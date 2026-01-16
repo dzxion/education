@@ -188,18 +188,16 @@ $$
 $$
 现考虑以下候选李雅普诺夫函数
 $$
-V \triangleq \frac{1}{2} \widetilde{x}
+V \triangleq \frac{1}{2} \widetilde{x}^2
 $$
 对 $V$ 求导
-<!-- $$
-A_{cl} = \left[
-\begin{array}{c}
--\frac{B+2cw^*}{J} & \frac{Kt}{J} & 0 & 0\\
--(\frac{k_p^i}{R}+1)\frac{n\phi_m}{Lq} & -\frac{R+k_p^i} {Lq} & -\frac{k_i^i}{L_q} & - \frac{k_p^i k_i^v}{L_q}\\
-\frac{n\phi_m}{R} & 1 & 0 & k_i^v\\
--\frac{k_p^i n\phi_m}{R} & -k_p^i & -k_i^i & -k_p^i k_i^v\\
-\end{array}\right]
-$$ -->
+$$
+\begin{align*}
+\dot{V} &= \widetilde{x} \dot{\widetilde{x}}\\
+        &= -k \widetilde{x}^2 
+\end{align*}
+$$
+根据定理4.10（参考文献1）可得出，平衡点 $\widetilde{x} = 0$ 是全局指数稳定
 
 <!-- **Proposition 2** *考虑动力学方程（2.3）以及控制律（3.1），闭环系统的平衡点$(w,i_q,v_q,\sigma_i,\sigma_v)=(w^*,i_q^*,v_q^∗,\sigma_i^*,\sigma_v^*)$是（局部）指数稳定的*
 
@@ -216,8 +214,8 @@ $$ -->
 
 <!-- ## Conclusion
 
-本文对动力电调的开环和闭环系统进行稳定性分析。然而稳定性只是最基本的问题，在此之上进一步考虑鲁棒性、扰动抑制等问题，以及在工程中遇到的问题如何抽象成控制目标进行分析。
+本文对动力电调的开环和闭环系统进行稳定性分析。然而稳定性只是最基本的问题，在此之上进一步考虑鲁棒性、扰动抑制等问题，以及在工程中遇到的问题如何抽象成控制目标进行分析。 -->
 
 ## Reference
 
-* H. Khalil, *Nonlinear Systems 3rd edition.* New Jersey: Prentice Hall, 2002. -->
+[1] H. Khalil, *Nonlinear Systems 3rd edition.* New Jersey: Prentice Hall, 2002.
