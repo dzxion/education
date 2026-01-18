@@ -84,14 +84,14 @@ $$\dot{x} = f(t,x,\gamma(t,x))$$ -->
 
 * $x$ 记为飞行器的位置
 * $v$ 记为飞行器的速度
-<!-- * $i_d$ 记为$d$轴电流
-* $B$ 记为粘性阻尼系数
-* $J$ 记为转动惯量
-* $c$ 记为空气动力学参数
-* $K_t$ 记为电机扭矩常数
-* $R$ 记为相电阻
-* $L_q$ 记为$q$轴电感
-* $L_d$ 记为$d$轴电感
+* $m$ 记为飞行器的质量
+* $T$ 记为飞行器的推力大小
+* $R$ 记为飞行器的旋转矩阵，表示机体系在世界系的投影
+* $e_3$ 记为世界系z轴基向量
+* $g$ 记为重力加速度
+* $w$ 记为机体角速度
+* $S(\cdot)$ 记为3$\times$3反对称矩阵
+<!-- * $L_d$ 记为$d$轴电感
 * $\phi_m$ 记为磁链常数
 * $n$ 记为极对数
 * $T_e$ 记为电磁扭矩
@@ -105,8 +105,8 @@ $$
 \begin{equation}
 \begin{aligned}
 \dot{x} &= v\\
-% T_e &= \frac{3}{2}n[\phi_m i_q-(L_q-L_d)i_d i_q]\\
-% \dot{i}_d &= -\frac{R}{L_d}i_d + nw\frac{L_q}{L_d}i_q+\frac{1}{L_d}v_d\\
+m\dot{v} &= -TRe_3 + mge_3\\
+\dot{R} &= RS(w)\\
 % \dot{i}_q &= -nw\frac{L_d}{L_q}i_d - \frac{R}{L_q}i_q-\frac{n\phi_m}{L_q}w+\frac{1}{L_q}v_q
 % \tag{2.1}
 \end{aligned}
@@ -130,21 +130,29 @@ $$ -->
 
 ## Control Design
 
-<!-- 飞行器的控制目标：
-* 镇定 $v_q$
+飞行器的控制目标：
+* 位置误差镇定
 
-我们设计的控制器分为两部分：电流控制器和电压控制器，电流控制器用于控制电压控制器输出的给定电流。电压控制器用于输出给定电流。只要给定电流等于平衡点对应的电流，就能实现对系统平衡点的镇定。 -->
-
-定义参考位置 $x_r$ 及其导数 $v_r = \dot{x}_r$，误差位置变量 $\widetilde{x} = x - x_r$，假设速度 $v$ 为虚拟控制变量，参数$k$，控制律设计如下：
+定义参考位置 $x_r$ 及其导数 $v_r = \dot{x}_r$，误差位置变量 $\widetilde{x} = x - x_r$，假设速度 $v$ 为虚拟控制变量，定义控制参数$k>0$，控制律设计如下：
 $$
 \begin{equation}
 \begin{aligned}
-v &= -k\widetilde{x} + v_r\\
+v = -k\widetilde{x} + v_r\\
 \end{aligned}
 \end{equation}
 % \tag{3.1}
 $$
+* 速度误差镇定
 
+定义参考速度 $v_r$ 及其导数 $a_r = \dot{v}_r$，误差速度变量 $\widetilde{v} = v - v_r$，假设推力 $T$ 和旋转矩阵 $R$ 为虚拟控制变量，定义控制参数$k>0$，控制律设计如下：
+$$
+\begin{equation}
+\begin{aligned}
+(TRe_3)_r = mge_3+k\widetilde{v} - ma_r\\
+\end{aligned}
+\end{equation}
+% \tag{3.1}
+$$
 ## Stability Analysis
 
 本节中，将给出飞行器闭环系统的稳定性结果。
@@ -197,11 +205,31 @@ $$
         &= -k \widetilde{x}^2 
 \end{align*}
 $$
-根据定理4.10（参考文献1）可得出，平衡点 $\widetilde{x} = 0$ 是全局指数稳定
+根据定理4.10（参考文献1）可知，平衡点 $\widetilde{x} = 0$ 是全局指数稳定
 
-<!-- **Proposition 2** *考虑动力学方程（2.3）以及控制律（3.1），闭环系统的平衡点$(w,i_q,v_q,\sigma_i,\sigma_v)=(w^*,i_q^*,v_q^∗,\sigma_i^*,\sigma_v^*)$是（局部）指数稳定的*
+**Proposition 2** *考虑动力学方程（1）以及控制律（3），误差系统的平衡点 $\widetilde{v}=0$ 是（全局）指数稳定的*
 
-**Proof:** 为了证明平衡点指数稳定，根据定理4.7，只需证明$A_{cl}$为Hurwitz矩阵。 -->
+**Proof:** 闭环系统的方程为
+
+$$
+\dot{\widetilde{v}} = -\frac{1}{m}(TRe_3)+ge_3-a_r
+$$
+根据控制律（3）可得
+$$
+\dot{\widetilde{v}} = -\frac{k}{m}\widetilde{v}
+$$
+现考虑以下候选李雅普诺夫函数
+$$
+V \triangleq \frac{1}{2} \widetilde{v}^2
+$$
+对 $V$ 求导
+$$
+\begin{align*}
+\dot{V} &= \widetilde{v} \dot{\widetilde{v}}\\
+        &= -\frac{k}{m}\widetilde{v}^2 
+\end{align*}
+$$
+根据定理4.10（参考文献1）可知，平衡点 $\widetilde{v} = 0$ 是全局指数稳定
 
 ## Simulation Results
 
