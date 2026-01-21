@@ -89,10 +89,10 @@ $$\dot{x} = f(t,x,\gamma(t,x))$$ -->
 * $R$ 记为飞行器的旋转矩阵，表示机体系在世界系的投影
 * $e_3$ 记为世界系z轴基向量
 * $g$ 记为重力加速度
-* $w$ 记为机体角速度
-* $S(\cdot)$ 记为3$\times$3反对称矩阵
-<!-- * $L_d$ 记为$d$轴电感
-* $\phi_m$ 记为磁链常数
+* $\Omega$ 记为机体角速度
+* $sk(\cdot)$ 记为3维向量到3$\times$3反对称矩阵的映射
+* $vex(\cdot)$ 记为3$\times$3反对称矩阵对3维向量的映射
+<!-- * $\phi_m$ 记为磁链常数
 * $n$ 记为极对数
 * $T_e$ 记为电磁扭矩
 * $T_L$ 记为电磁扭矩
@@ -106,7 +106,7 @@ $$
 \begin{aligned}
 \dot{x} &= v\\
 m\dot{v} &= -TRe_3 + mge_3\\
-\dot{R} &= RS(w)\\
+\dot{R} &= Rsk(\Omega)\\
 % \dot{i}_q &= -nw\frac{L_d}{L_q}i_d - \frac{R}{L_q}i_q-\frac{n\phi_m}{L_q}w+\frac{1}{L_q}v_q
 % \tag{2.1}
 \end{aligned}
@@ -149,6 +149,26 @@ $$
 \begin{equation}
 \begin{aligned}
 (TRe_3)_r = mge_3+k\widetilde{v} - ma_r\\
+\end{aligned}
+\end{equation}
+% \tag{3.1}
+$$
+* 姿态误差镇定
+
+定义参考速度 $R_d$ 及其导数 $\Omega_r$，误差姿态变量 $\widetilde{R} = R^TR_d$，假设角速度 $\Omega$ 为虚拟控制变量，定义控制参数$k>0$，定义运算：
+$$
+\begin{equation}
+\begin{aligned}
+\pi_a\widetilde{R} = \frac{\widetilde{R}-\widetilde{R}^T}{2}\\
+\end{aligned}
+\end{equation}
+% \tag{3.1}
+$$
+控制律设计如下：
+$$
+\begin{equation}
+\begin{aligned}
+\Omega = -kvex(\pi_a\widetilde{R}^T) + \Omega_r\\
 \end{aligned}
 \end{equation}
 % \tag{3.1}
@@ -196,13 +216,14 @@ $$
 $$
 现考虑以下候选李雅普诺夫函数
 $$
-V \triangleq \frac{1}{2} \widetilde{x}^2
+V \triangleq \frac{1}{2} |\widetilde{x}|^2 = \frac{1}{2} \widetilde{x}^T\widetilde{x}
 $$
 对 $V$ 求导
 $$
 \begin{align*}
-\dot{V} &= \widetilde{x} \dot{\widetilde{x}}\\
-        &= -k \widetilde{x}^2 
+\dot{V} &= \widetilde{x}^T \dot{\widetilde{x}}\\
+        &= -k \widetilde{x}^T\widetilde{x}\\
+        &= -k |\widetilde{x}|^2
 \end{align*}
 $$
 根据定理4.10（参考文献1）可知，平衡点 $\widetilde{x} = 0$ 是全局指数稳定
@@ -213,6 +234,36 @@ $$
 
 $$
 \dot{\widetilde{v}} = -\frac{1}{m}(TRe_3)+ge_3-a_r
+$$
+根据控制律（3）可得
+$$
+\dot{\widetilde{v}} = -\frac{k}{m}\widetilde{v}
+$$
+现考虑以下候选李雅普诺夫函数
+$$
+V \triangleq \frac{1}{2} |\widetilde{v}|^2 = \frac{1}{2} \widetilde{v}^T\widetilde{v}
+$$
+对 $V$ 求导
+$$
+\begin{align*}
+\dot{V} &= \widetilde{v}^T \dot{\widetilde{v}}\\
+        &= -k \widetilde{v}^T\widetilde{v}\\
+        &= -k |\widetilde{v}|^2
+\end{align*}
+$$
+根据定理4.10（参考文献1）可知，平衡点 $\widetilde{v} = 0$ 是全局指数稳定
+
+**Proposition 3** *考虑动力学方程（1）以及控制律（5），误差系统的平衡点 $\widetilde{R}=I$ 是（全局）指数稳定的*
+
+**Proof:** 闭环系统的方程为
+
+$$
+\begin{align*}
+\dot{\widetilde{R}} 
+                    % &= \dot{(R^TR_d)}\\
+                    % &= \dot{R}^TR_d + R^T\dot{R}_d\\
+                    &= -sk(\Omega)\widetilde{R}+\widetilde{R}sk(\Omega_d)
+\end{align*}
 $$
 根据控制律（3）可得
 $$
