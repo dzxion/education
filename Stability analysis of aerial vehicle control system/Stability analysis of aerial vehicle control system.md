@@ -8,7 +8,7 @@ math:
     tags: 'ams'
 --- -->
 
-# <center>Stability analysis of aerial vehicle controller
+# <center>Stability analysis of aerial vehicle control system
 <center>Dzxion</center>
 
 <!-- Abstract——电控系统是目前工业界最常见的控制系统。据我观察，目前大部分资料对电控系统的介绍是描述自身特定的算法框架，并没有给出系统稳定性的分析结果。目前大部分资料并不能从数学的层面上把电控系统的基本性质描述清楚，并且许多从业人员对控制理论的基本概念是不理解的。因此，本文从控制理论的角度，以动力电调作为例子，推导了动力电调开环和闭环稳定性分析结果，以说明控制理论是如何解决问题的。 -->
@@ -253,31 +253,35 @@ $$
 $$
 根据定理4.10（参考文献1）可知，平衡点 $\widetilde{v} = 0$ 是全局指数稳定
 
-**Proposition 3** *考虑动力学方程（1）以及控制律（5），误差系统的平衡点 $\widetilde{R}=I$ 是（全局）指数稳定的*
+**Proposition 3** *考虑动力学方程（1）以及控制律（5），误差系统的平衡点 $\widetilde{R}=I_3$ 是（全局）指数稳定的*
 
 **Proof:** 闭环系统的方程为
 
 $$
 \begin{align*}
-\dot{\widetilde{R}} 
+\dot{\widetilde{R}}
                     % &= \dot{(R^TR_d)}\\
                     % &= \dot{R}^TR_d + R^T\dot{R}_d\\
                     &= -sk(\Omega)\widetilde{R}+\widetilde{R}sk(\Omega_d)
 \end{align*}
 $$
-根据控制律（3）可得
+根据控制律（5）可得
 $$
 \dot{\widetilde{v}} = -\frac{k}{m}\widetilde{v}
 $$
+定义 $\varepsilon_R = I_3 - \widetilde{R}$，考虑 Frobenius 范数
+$$
+||\varepsilon_R||_F = \sqrt{tr((I_3-\widetilde{R})^T(I_3-\widetilde{R}))} = \sqrt{2tr(I_3-\widetilde{R})}
+$$
 现考虑以下候选李雅普诺夫函数
 $$
-V \triangleq \frac{1}{2} \widetilde{v}^2
+V \triangleq \frac{1}{4} |\widetilde{v}|^2 = \frac{1}{2} \widetilde{v}^T\widetilde{v}
 $$
 对 $V$ 求导
 $$
 \begin{align*}
 \dot{V} &= \widetilde{v} \dot{\widetilde{v}}\\
-        &= -\frac{k}{m}\widetilde{v}^2 
+        &= -\frac{k}{m}\widetilde{v}^2
 \end{align*}
 $$
 根据定理4.10（参考文献1）可知，平衡点 $\widetilde{v} = 0$ 是全局指数稳定
