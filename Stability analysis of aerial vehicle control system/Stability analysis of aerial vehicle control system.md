@@ -275,13 +275,23 @@ $$
 $$
 现考虑以下候选李雅普诺夫函数
 $$
-V \triangleq \frac{1}{4} |\widetilde{v}|^2 = \frac{1}{2} \widetilde{v}^T\widetilde{v}
+V \triangleq \frac{1}{4} ||\varepsilon_R||_F^2 = \frac{1}{2}tr(I_3-\widetilde{R})
 $$
-对 $V$ 求导
+关注以下导数
 $$
 \begin{align*}
-\dot{V} &= \widetilde{v} \dot{\widetilde{v}}\\
-        &= -\frac{k}{m}\widetilde{v}^2
+tr(\dot{\widetilde{R}}) &= tr(-sk(\Omega)\widetilde{R}+\widetilde{R}sk(\Omega_d))\\
+        &= tr(-sk(\Omega)\widetilde{R}+sk(\Omega_d)\widetilde{R}+\widetilde{R}sk(\Omega_d)-sk(\Omega_d)\widetilde{R})
+\end{align*}
+$$
+注意到
+$$
+-sk(\Omega)\widetilde{R}+\widetilde{R}sk(\Omega_d) = [\widetilde{R},sk(\Omega_d)]
+$$
+是一个李括号。有 $tr[\widetilde{R},sk(\Omega_d)]=0$，对 $V$ 求导
+$$
+\begin{align*}
+\dot{V} &= \frac{1}{2}tr(sk(\Omega-\Omega_d)\widetilde{R})
 \end{align*}
 $$
 根据定理4.10（参考文献1）可知，平衡点 $\widetilde{v} = 0$ 是全局指数稳定
