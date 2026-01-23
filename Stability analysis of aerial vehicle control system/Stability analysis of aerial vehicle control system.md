@@ -92,12 +92,17 @@ $$\dot{x} = f(t,x,\gamma(t,x))$$ -->
 * $\Omega$ 记为机体角速度
 * $sk(\cdot)$ 记为3维向量到3$\times$3反对称矩阵的映射
 * $vex(\cdot)$ 记为3$\times$3反对称矩阵对3维向量的映射
-<!-- * $\phi_m$ 记为磁链常数
-* $n$ 记为极对数
-* $T_e$ 记为电磁扭矩
-* $T_L$ 记为电磁扭矩
-* $v_q$ 记为$q$轴输入电压
-* $v_d$ 记为$d$轴输入电压 -->
+* $||\cdot||_F$ 记为 Frobenius 范数，$||H||_F = \sqrt{tr(H^TH)}$
+* $\forall A,B \in R^{3\times3}, tr(A)=tr(A^T), \frac{d}{dt}(tr(A))=tr(\dot{A}),tr(AB)=tr(BA), tr(A+B)=tr(A)+tr(B), tr(cA)=ctr(A)$
+* $\forall a,b \in R^{3}, sk(\alpha a + \beta b)=\alpha sk(a)+\beta sk(b)$
+* $\forall x \in R^3$ 以及任意对称矩阵$H \in R^{3\times3},tr(Hsk(x)=0)$
+* $(\theta,a)(|a|=1)$ 记为 $R\in SO(3)$ 的轴角表示，有如下等式：
+$$
+\begin{align*}
+R = exp(\theta a_{\times}),log(R)=\theta a_{\times},cos(\theta)= \frac{1}{2}(tr(R)-1)
+\end{align*}
+$$
+* $v_d$ 记为$d$轴输入电压
 
 ### Dynamic
 系统动力学表示如下：
@@ -107,7 +112,7 @@ $$
 \dot{x} &= v\\
 m\dot{v} &= -TRe_3 + mge_3\\
 \dot{R} &= Rsk(\Omega)\\
-% \dot{i}_q &= -nw\frac{L_d}{L_q}i_d - \frac{R}{L_q}i_q-\frac{n\phi_m}{L_q}w+\frac{1}{L_q}v_q
+\dot{\Omega} &= -nw\frac{L_d}{L_q}i_d - \frac{R}{L_q}i_q-\frac{n\phi_m}{L_q}w+\frac{1}{L_q}v_q
 % \tag{2.1}
 \end{aligned}
 % \label{eq:energy-mass}
@@ -155,11 +160,11 @@ $$
 $$
 * 姿态误差镇定
 
-定义参考速度 $R_d$ 及其导数 $\Omega_r$，误差姿态变量 $\widetilde{R} = R^TR_d$，假设角速度 $\Omega$ 为虚拟控制变量，定义控制参数$k>0$，定义运算：
+定义参考姿态 $R_r$ 及其导数 $\Omega_r$，误差姿态变量 $\widetilde{R} = R^TR_r$，假设角速度 $\Omega$ 为虚拟控制变量，定义控制参数$k>0$，定义运算：
 $$
 \begin{equation}
 \begin{aligned}
-\pi_a\widetilde{R} = \frac{\widetilde{R}-\widetilde{R}^T}{2}\\
+\pi_a\widetilde{R} = \frac{\widetilde{R}-\widetilde{R}^T}{2},\pi_s\widetilde{R} = \frac{\widetilde{R}+\widetilde{R}^T}{2}
 \end{aligned}
 \end{equation}
 % \tag{3.1}
@@ -265,10 +270,6 @@ $$
                     &= -sk(\Omega)\widetilde{R}+\widetilde{R}sk(\Omega_d)
 \end{align*}
 $$
-根据控制律（5）可得
-$$
-\dot{\widetilde{v}} = -\frac{k}{m}\widetilde{v}
-$$
 定义 $\varepsilon_R = I_3 - \widetilde{R}$，考虑 Frobenius 范数
 $$
 ||\varepsilon_R||_F = \sqrt{tr((I_3-\widetilde{R})^T(I_3-\widetilde{R}))} = \sqrt{2tr(I_3-\widetilde{R})}
@@ -294,7 +295,31 @@ $$
 \dot{V} &= \frac{1}{2}tr(sk(\Omega-\Omega_d)\widetilde{R})
 \end{align*}
 $$
-根据定理4.10（参考文献1）可知，平衡点 $\widetilde{v} = 0$ 是全局指数稳定
+将$\widetilde{R}$分解为对称矩阵和反对称矩阵的和
+$$
+\begin{align*}
+\dot{V} &= \frac{1}{2}tr(sk(\Omega-\Omega_d)\pi_s\widetilde{R})+\frac{1}{2}tr(sk(\Omega-\Omega_d)\pi_a\widetilde{R})
+\end{align*}
+$$
+此外，可证明对称矩阵与反对称矩阵乘积的迹等于零，上式可简化为：
+$$
+\begin{align*}
+\dot{V} &= \frac{1}{2}tr(sk(\Omega-\Omega_d)\pi_a\widetilde{R})
+\end{align*}
+$$
+根据控制律（5）可得
+$$
+\begin{align*}
+\dot{V} &= -\frac{1}{2}k||\pi_a\widetilde{R}||_F^2
+\end{align*}
+$$
+确保 $I_3−\widetilde{R}$ 指数收敛到零。
+<!-- $$
+\begin{align*}
+\frac{1}{2}tr(I_3-\widetilde{R}) &= 1-cos(\theta) = 2sin(\theta)
+\end{align*}
+$$ -->
+<!-- 根据定理4.10（参考文献1）可知，平衡点 $\widetilde{v} = 0$ 是全局指数稳定 -->
 
 ## Simulation Results
 
