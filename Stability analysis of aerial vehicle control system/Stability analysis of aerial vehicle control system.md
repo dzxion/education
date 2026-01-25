@@ -102,7 +102,7 @@ $$
 R = exp(\theta a_{\times}),log(R)=\theta a_{\times},cos(\theta)= \frac{1}{2}(tr(R)-1)
 \end{align*}
 $$
-* $v_d$ 记为$d$轴输入电压
+<!-- * $v_d$ 记为$d$轴输入电压 -->
 
 ### Dynamic
 系统动力学表示如下：
@@ -112,7 +112,7 @@ $$
 \dot{x} &= v\\
 m\dot{v} &= -TRe_3 + mge_3\\
 \dot{R} &= Rsk(\Omega)\\
-\dot{\Omega} &= -nw\frac{L_d}{L_q}i_d - \frac{R}{L_q}i_q-\frac{n\phi_m}{L_q}w+\frac{1}{L_q}v_q
+I\dot{\Omega} &= -\Omega \times I\Omega + \Gamma
 % \tag{2.1}
 \end{aligned}
 % \label{eq:energy-mass}
@@ -174,6 +174,17 @@ $$
 \begin{equation}
 \begin{aligned}
 \Omega = -kvex(\pi_a\widetilde{R}^T) + \Omega_r\\
+\end{aligned}
+\end{equation}
+% \tag{3.1}
+$$
+* 角速度误差镇定
+
+定义参考角速度 $\Omega_r$ 及其导数 $\dot{\Omega}_r$，误差角速度变量 $\widetilde{\Omega} = \Omega - \Omega_r$，假设力矩 $\Gamma$ 为虚拟控制变量，定义控制参数$k>0$，控制律设计如下：
+$$
+\begin{equation}
+\begin{aligned}
+\Gamma = -k\widetilde{\Omega} + \Omega \times I\Omega +I\Omega_r\\
 \end{aligned}
 \end{equation}
 % \tag{3.1}
@@ -252,8 +263,8 @@ $$
 $$
 \begin{align*}
 \dot{V} &= \widetilde{v}^T \dot{\widetilde{v}}\\
-        &= -k \widetilde{v}^T\widetilde{v}\\
-        &= -k |\widetilde{v}|^2
+        &= -\frac{k}{m} \widetilde{v}^T\widetilde{v}\\
+        &= -\frac{k}{m} |\widetilde{v}|^2
 \end{align*}
 $$
 根据定理4.10（参考文献1）可知，平衡点 $\widetilde{v} = 0$ 是全局指数稳定
@@ -314,12 +325,31 @@ $$
 \end{align*}
 $$
 确保 $I_3−\widetilde{R}$ 指数收敛到零。
-<!-- $$
+
+**Proposition 4** *考虑动力学方程（1）以及控制律（6），误差系统的平衡点 $\widetilde{\Omega}=0$ 是（全局）指数稳定的*
+
+**Proof:** 闭环系统的方程为
+
+$$
+\dot{\widetilde{\Omega}} = \Omega - \Omega_r
+$$
+根据控制律（6）可得
+$$
+\dot{\widetilde{\Omega}} = -\frac{k}{I}\widetilde{\Omega}
+$$
+现考虑以下候选李雅普诺夫函数
+$$
+V \triangleq \frac{1}{2} |\widetilde{\Omega}|^2 = \frac{1}{2} \widetilde{\Omega}^T\widetilde{\Omega}
+$$
+对 $V$ 求导
+$$
 \begin{align*}
-\frac{1}{2}tr(I_3-\widetilde{R}) &= 1-cos(\theta) = 2sin(\theta)
+\dot{V} &= \widetilde{\Omega}^T \dot{\widetilde{\Omega}}\\
+        &= -\frac{k}{I} \widetilde{\Omega}^T\widetilde{\Omega}\\
+        &= -\frac{k}{I} |\widetilde{\Omega}|^2
 \end{align*}
-$$ -->
-<!-- 根据定理4.10（参考文献1）可知，平衡点 $\widetilde{v} = 0$ 是全局指数稳定 -->
+$$
+根据定理4.10（参考文献1）可知，平衡点 $\widetilde{\Omega} = 0$ 是全局指数稳定
 
 ## Simulation Results
 
