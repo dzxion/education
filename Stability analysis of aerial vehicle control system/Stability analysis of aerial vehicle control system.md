@@ -118,20 +118,30 @@ I\dot{\Omega} &= -\Omega \times I\Omega + \Gamma
 % \label{eq:energy-mass}
 \end{equation}
 $$
-<!-- 基于上述模型，做进一步简化，我们令$i_d\equiv0$，方程如下：
+通过欧拉角 $\xi=(yaw(\psi),pitch(\theta),roll(\phi))$定义机体系相对于世界系的姿态$R$。
 $$
+\begin{equation}
 \begin{aligned}
-\dot{w} &= -\frac{B}{J}w+\frac{K_t}{J}i_q-\frac{1}{J}T_L\\
-\dot{i}_q &= - \frac{R}{L_q}i_q-\frac{n\phi_m}{L_q}w+\frac{1}{L_q}v_q\tag{2.2}
+R =
+\begin{pmatrix}
+\cos\psi\cos\theta & \cos\psi\sin\theta\sin\phi - \sin\psi\cos\phi & \cos\psi\sin\theta\cos\phi + \sin\psi\sin\phi \\
+\sin\psi\cos\theta & \sin\psi\sin\theta\sin\phi + \cos\psi\cos\phi & \sin\psi\sin\theta\cos\phi - \cos\psi\sin\phi \\
+-\sin\theta & \cos\theta\sin\phi & \cos\theta\cos\phi
+\end{pmatrix}
 \end{aligned}
+\end{equation}
 $$
-考虑动力电调的负载扭矩特性，系统可进一步变为
+基于欧拉角的速度动力学，系统表示为：
 $$
+\begin{equation}
 \begin{aligned}
-\dot{w} &= -\frac{B}{J}w+\frac{K_t}{J}i_q-\frac{c}{J}w^2\\
-\dot{i}_q &= - \frac{R}{L_q}i_q-\frac{n\phi_m}{L_q}w+\frac{1}{L_q}v_q\tag{2.3}
+m\dot{v}_1 &= -T(\cos\psi\sin\theta\cos\phi + \sin\psi\sin\phi)\\
+m\dot{v}_2 &= -T(\sin\psi\sin\theta\cos\phi - \cos\psi\sin\phi)\\
+m\dot{v}_3 &= -T(\cos\theta\cos\phi) + mg
+% \tag{2.3}
 \end{aligned}
-$$ -->
+\end{equation}
+$$
 
 ## Control Design
 
