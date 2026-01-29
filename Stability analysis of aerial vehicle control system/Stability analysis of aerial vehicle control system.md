@@ -142,7 +142,27 @@ m\dot{v}_3 &= -T(\cos\theta\cos\phi) + mg
 \end{aligned}
 \end{equation}
 $$
-
+记中间坐标系M，与世界系之间的关系为偏航角旋转，则有M系的速度动力学
+$$
+\begin{equation}
+\begin{aligned}
+m\dot{v}^M_1 &= -T( \sin\theta\cos\phi)\\
+m\dot{v}^M_2 &= T(\sin\phi)\\
+m\dot{v}^M_3 &= -T(\cos\theta\cos\phi) + mg
+% \tag{2.3}
+\end{aligned}
+\end{equation}
+$$
+假设z轴受力平衡，有$mg = T(\cos\theta\cos\phi)$，进一步可得出
+$$
+\begin{equation}
+\begin{aligned}
+\dot{v}^M_1 &= -( \tan\theta)g\\
+\dot{v}^M_2 &= \frac{g}{\cos\theta}\tan\phi\\
+% \tag{2.3}
+\end{aligned}
+\end{equation}
+$$
 ## Control Design
 
 飞行器的控制目标：
