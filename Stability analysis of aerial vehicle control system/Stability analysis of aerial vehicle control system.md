@@ -163,6 +163,7 @@ $$
 \end{aligned}
 \end{equation}
 $$
+式5表明在z轴受力平衡条件下，水平加速度仅和姿态有关系
 ## Control Design
 
 飞行器的控制目标：
