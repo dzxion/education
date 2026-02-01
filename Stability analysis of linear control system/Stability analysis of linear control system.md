@@ -1,0 +1,375 @@
+<!-- ---
+math:
+  enable: true
+  engine: mathjax
+  mathjax:
+    tex-extensions:
+      - autoload-all.js
+    tags: 'ams'
+--- -->
+
+# <center>Stability analysis of linear control system
+<center>Dzxion</center>
+
+<!-- Abstract——电控系统是目前工业界最常见的控制系统。据我观察，目前大部分资料对电控系统的介绍是描述自身特定的算法框架，并没有给出系统稳定性的分析结果。目前大部分资料并不能从数学的层面上把电控系统的基本性质描述清楚，并且许多从业人员对控制理论的基本概念是不理解的。因此，本文从控制理论的角度，以动力电调作为例子，推导了动力电调开环和闭环稳定性分析结果，以说明控制理论是如何解决问题的。 -->
+
+[toc]
+
+## Introduction
+
+<!-- ### Dynamical Systems
+
+控制理论本质上是研究微分方程/动力系统（dynamical systems）。
+
+$$\dot{x}_1 = f_1(t,x_1,\cdots,x_n,u_1,\cdots,u_p)\\
+\dot{x}_2 = f_2(t,x_1,\cdots,x_n,u_1,\cdots,u_p)\\
+ \vdots \\
+\dot{x}_n = f_n(t,x_1,\cdots,x_n,u_1,\cdots,u_p)$$
+
+上式是由有限个耦合的一阶常微分方程建模的动力系统。其中 $\dot{x}_i$ 表示 $x_i$ 对于时间变量 $t$ 的导数，$u_1,u_2,\cdots,u_p$ 是输入变量。$x_1,x_2,\cdots,x_p$ 是状态变量。我们通常会使用向量将方程写成紧凑的形式。定义如下：
+
+$$x=\left[\begin {array}{c}
+x_1 \\
+x_2 \\
+\vdots \\
+\vdots \\
+x_n
+\end{array}\right],
+u=\left[\begin {array}{c}
+u_1 \\
+u_2 \\
+\vdots \\
+u_p
+\end{array}\right],
+f(t,x,u)=\left[\begin {array}{c}
+f_1(t,x,u) \\
+f_2(t,x,u) \\
+\vdots \\
+\vdots \\
+f_n(t,x,u)
+\end{array}\right]$$
+将n个一阶微分方程改写为一个n维的一阶向量微分方程
+$$\dot{x} = f(t,x,u)\tag{1.1}$$
+我们将（1.1）统称为状态空间模型。如果系统不存在输入且是时不变的，方程简化为
+$$\dot{x} = f(x)\tag{1.2}$$ -->
+
+<!-- ### Equilibrium Point
+
+状态空间的一个重要概念是平衡点（equilibrium point）。如果状态空间中的点 $x = x^*$ 具有以下特性：每当系统的状态从 $x^*$ 出发，它将在未来所有时间保持在 $x^*$ 时，则称其为（1.2）的平衡点。对于时不变系统（1.2），平衡点是方程的实根
+$$f(x)=0$$
+
+### Lyapunov Stability
+Lyapunov稳定性定义：
+![](微信图片_20250318200401.png)
+
+![](微信图片_20250318202751.png)
+
+Lyapunov稳定性分析方法：
+![](微信图片_20250318204823.png)
+
+![](微信图片_20250323090556.png)
+
+### Stabilization
+
+镇定问题的定义，对于系统
+$$\dot{x} = f(t,x,u)$$
+设计一个反馈控制律
+$$u = \gamma(t,x)$$
+使得原点 $x = 0$ 是如下闭环系统的渐近稳定平衡点
+$$\dot{x} = f(t,x,\gamma(t,x))$$ -->
+
+## Problem Formulation
+
+### Notation
+
+<!-- * $x$ 记为飞行器的位置
+* $v$ 记为飞行器的速度
+* $m$ 记为飞行器的质量
+* $T$ 记为飞行器的推力大小
+* $R$ 记为飞行器的旋转矩阵，表示机体系在世界系的投影
+* $e_3$ 记为世界系z轴基向量
+* $g$ 记为重力加速度
+* $\Omega$ 记为机体角速度
+* $sk(\cdot)$ 记为3维向量到3$\times$3反对称矩阵的映射
+* $vex(\cdot)$ 记为3$\times$3反对称矩阵对3维向量的映射
+* $||\cdot||_F$ 记为 Frobenius 范数，$||H||_F = \sqrt{tr(H^TH)}$
+* $\forall A,B \in R^{3\times3}, tr(A)=tr(A^T), \frac{d}{dt}(tr(A))=tr(\dot{A}),tr(AB)=tr(BA), tr(A+B)=tr(A)+tr(B), tr(cA)=ctr(A)$
+* $\forall a,b \in R^{3}, sk(\alpha a + \beta b)=\alpha sk(a)+\beta sk(b)$
+* $\forall x \in R^3$ 以及任意对称矩阵$H \in R^{3\times3},tr(Hsk(x)=0)$
+* $(\theta,a)(|a|=1)$ 记为 $R\in SO(3)$ 的轴角表示，有如下等式：
+$$
+\begin{align*}
+R = exp(\theta a_{\times}),log(R)=\theta a_{\times},cos(\theta)= \frac{1}{2}(tr(R)-1)
+\end{align*}
+$$ -->
+
+### Dynamic
+<!-- 系统动力学表示如下：
+$$
+\begin{equation}
+\begin{aligned}
+\dot{x} &= v\\
+m\dot{v} &= -TRe_3 + mge_3\\
+\dot{R} &= Rsk(\Omega)\\
+I\dot{\Omega} &= -\Omega \times I\Omega + \Gamma
+% \tag{2.1}
+\end{aligned}
+% \label{eq:energy-mass}
+\end{equation}
+$$
+通过欧拉角 $\xi=(yaw(\psi),pitch(\theta),roll(\phi))$定义机体系相对于世界系的姿态$R$。
+$$
+\begin{equation}
+\begin{aligned}
+R =
+\begin{pmatrix}
+\cos\psi\cos\theta & \cos\psi\sin\theta\sin\phi - \sin\psi\cos\phi & \cos\psi\sin\theta\cos\phi + \sin\psi\sin\phi \\
+\sin\psi\cos\theta & \sin\psi\sin\theta\sin\phi + \cos\psi\cos\phi & \sin\psi\sin\theta\cos\phi - \cos\psi\sin\phi \\
+-\sin\theta & \cos\theta\sin\phi & \cos\theta\cos\phi
+\end{pmatrix}
+\end{aligned}
+\end{equation}
+$$
+基于欧拉角的速度动力学，系统表示为：
+$$
+\begin{equation}
+\begin{aligned}
+m\dot{v}_1 &= -T(\cos\psi\sin\theta\cos\phi + \sin\psi\sin\phi)\\
+m\dot{v}_2 &= -T(\sin\psi\sin\theta\cos\phi - \cos\psi\sin\phi)\\
+m\dot{v}_3 &= -T(\cos\theta\cos\phi) + mg
+% \tag{2.3}
+\end{aligned}
+\end{equation}
+$$
+记中间坐标系M，与世界系之间的关系为偏航角旋转，则有M系的速度动力学
+$$
+\begin{equation}
+\begin{aligned}
+m\dot{v}^M_1 &= -T( \sin\theta\cos\phi)\\
+m\dot{v}^M_2 &= T(\sin\phi)\\
+m\dot{v}^M_3 &= -T(\cos\theta\cos\phi) + mg
+% \tag{2.3}
+\end{aligned}
+\end{equation}
+$$
+假设z轴受力平衡，有$mg = T(\cos\theta\cos\phi)$，进一步可得出
+$$
+\begin{equation}
+\begin{aligned}
+\dot{v}^M_1 &= -( \tan\theta)g\\
+\dot{v}^M_2 &= \frac{g}{\cos\theta}\tan\phi\\
+% \tag{2.3}
+\end{aligned}
+\end{equation}
+$$
+式5表明在z轴受力平衡条件下，水平加速度仅和姿态有关系 -->
+
+## Control Design
+
+<!-- 飞行器的控制目标：
+* 位置误差镇定
+
+定义参考位置 $x_r$ 及其导数 $v_r = \dot{x}_r$，误差位置变量 $\widetilde{x} = x - x_r$，假设速度 $v$ 为虚拟控制变量，定义控制参数$k>0$，控制律设计如下：
+$$
+\begin{equation}
+\begin{aligned}
+v = -k\widetilde{x} + v_r\\
+\end{aligned}
+\end{equation}
+% \tag{3.1}
+$$
+* 速度误差镇定
+
+定义参考速度 $v_r$ 及其导数 $a_r = \dot{v}_r$，误差速度变量 $\widetilde{v} = v - v_r$，假设推力 $T$ 和旋转矩阵 $R$ 为虚拟控制变量，定义控制参数$k>0$，控制律设计如下：
+$$
+\begin{equation}
+\begin{aligned}
+(TRe_3)_r = mge_3+k\widetilde{v} - ma_r\\
+\end{aligned}
+\end{equation}
+% \tag{3.1}
+$$
+* 姿态误差镇定
+
+定义参考姿态 $R_r$ 及其导数 $\Omega_r$，误差姿态变量 $\widetilde{R} = R^TR_r$，假设角速度 $\Omega$ 为虚拟控制变量，定义控制参数$k>0$，定义运算：
+$$
+\begin{equation}
+\begin{aligned}
+\pi_a\widetilde{R} = \frac{\widetilde{R}-\widetilde{R}^T}{2},\pi_s\widetilde{R} = \frac{\widetilde{R}+\widetilde{R}^T}{2}
+\end{aligned}
+\end{equation}
+% \tag{3.1}
+$$
+控制律设计如下：
+$$
+\begin{equation}
+\begin{aligned}
+\Omega = -kvex(\pi_a\widetilde{R}^T) + \Omega_r\\
+\end{aligned}
+\end{equation}
+% \tag{3.1}
+$$
+* 角速度误差镇定
+
+定义参考角速度 $\Omega_r$ 及其导数 $\dot{\Omega}_r$，误差角速度变量 $\widetilde{\Omega} = \Omega - \Omega_r$，假设力矩 $\Gamma$ 为虚拟控制变量，定义控制参数$k>0$，控制律设计如下：
+$$
+\begin{equation}
+\begin{aligned}
+\Gamma = -k\widetilde{\Omega} + \Omega \times I\Omega +I\Omega_r\\
+\end{aligned}
+\end{equation}
+% \tag{3.1}
+$$ -->
+
+## Stability Analysis
+
+<!-- 本节中，将给出飞行器闭环系统的稳定性结果。
+
+**Proposition 1** *考虑动力学方程（1）以及控制律（2），误差系统的平衡点 $\widetilde{x}=0$ 是（全局）指数稳定的*
+
+**Proof:** 闭环系统的方程为
+
+$$
+\dot{\widetilde{x}} = v - v_r
+$$
+根据控制律（2）可得
+$$
+\dot{\widetilde{x}} = -k\widetilde{x}
+$$
+现考虑以下候选李雅普诺夫函数
+$$
+V \triangleq \frac{1}{2} |\widetilde{x}|^2 = \frac{1}{2} \widetilde{x}^T\widetilde{x}
+$$
+对 $V$ 求导
+$$
+\begin{align*}
+\dot{V} &= \widetilde{x}^T \dot{\widetilde{x}}\\
+        &= -k \widetilde{x}^T\widetilde{x}\\
+        &= -k |\widetilde{x}|^2
+\end{align*}
+$$
+根据定理4.10（参考文献1）可知，平衡点 $\widetilde{x} = 0$ 是全局指数稳定
+
+**Proposition 2** *考虑动力学方程（1）以及控制律（3），误差系统的平衡点 $\widetilde{v}=0$ 是（全局）指数稳定的*
+
+**Proof:** 闭环系统的方程为
+
+$$
+\dot{\widetilde{v}} = -\frac{1}{m}(TRe_3)+ge_3-a_r
+$$
+根据控制律（3）可得
+$$
+\dot{\widetilde{v}} = -\frac{k}{m}\widetilde{v}
+$$
+现考虑以下候选李雅普诺夫函数
+$$
+V \triangleq \frac{1}{2} |\widetilde{v}|^2 = \frac{1}{2} \widetilde{v}^T\widetilde{v}
+$$
+对 $V$ 求导
+$$
+\begin{align*}
+\dot{V} &= \widetilde{v}^T \dot{\widetilde{v}}\\
+        &= -\frac{k}{m} \widetilde{v}^T\widetilde{v}\\
+        &= -\frac{k}{m} |\widetilde{v}|^2
+\end{align*}
+$$
+根据定理4.10（参考文献1）可知，平衡点 $\widetilde{v} = 0$ 是全局指数稳定
+
+**Proposition 3** *考虑动力学方程（1）以及控制律（5），误差系统的平衡点 $\widetilde{R}=I_3$ 是（全局）指数稳定的*
+
+**Proof:** 闭环系统的方程为
+
+$$
+\begin{align*}
+\dot{\widetilde{R}}
+                    % &= \dot{(R^TR_d)}\\
+                    % &= \dot{R}^TR_d + R^T\dot{R}_d\\
+                    &= -sk(\Omega)\widetilde{R}+\widetilde{R}sk(\Omega_d)
+\end{align*}
+$$
+定义 $\varepsilon_R = I_3 - \widetilde{R}$，考虑 Frobenius 范数
+$$
+||\varepsilon_R||_F = \sqrt{tr((I_3-\widetilde{R})^T(I_3-\widetilde{R}))} = \sqrt{2tr(I_3-\widetilde{R})}
+$$
+现考虑以下候选李雅普诺夫函数
+$$
+V \triangleq \frac{1}{4} ||\varepsilon_R||_F^2 = \frac{1}{2}tr(I_3-\widetilde{R})
+$$
+关注以下导数
+$$
+\begin{align*}
+tr(\dot{\widetilde{R}}) &= tr(-sk(\Omega)\widetilde{R}+\widetilde{R}sk(\Omega_d))\\
+        &= tr(-sk(\Omega)\widetilde{R}+sk(\Omega_d)\widetilde{R}+\widetilde{R}sk(\Omega_d)-sk(\Omega_d)\widetilde{R})
+\end{align*}
+$$
+注意到
+$$
+-sk(\Omega)\widetilde{R}+\widetilde{R}sk(\Omega_d) = [\widetilde{R},sk(\Omega_d)]
+$$
+是一个李括号。有 $tr[\widetilde{R},sk(\Omega_d)]=0$，对 $V$ 求导
+$$
+\begin{align*}
+\dot{V} &= \frac{1}{2}tr(sk(\Omega-\Omega_d)\widetilde{R})
+\end{align*}
+$$
+将$\widetilde{R}$分解为对称矩阵和反对称矩阵的和
+$$
+\begin{align*}
+\dot{V} &= \frac{1}{2}tr(sk(\Omega-\Omega_d)\pi_s\widetilde{R})+\frac{1}{2}tr(sk(\Omega-\Omega_d)\pi_a\widetilde{R})
+\end{align*}
+$$
+此外，可证明对称矩阵与反对称矩阵乘积的迹等于零，上式可简化为：
+$$
+\begin{align*}
+\dot{V} &= \frac{1}{2}tr(sk(\Omega-\Omega_d)\pi_a\widetilde{R})
+\end{align*}
+$$
+根据控制律（5）可得
+$$
+\begin{align*}
+\dot{V} &= -\frac{1}{2}k||\pi_a\widetilde{R}||_F^2
+\end{align*}
+$$
+确保 $I_3−\widetilde{R}$ 指数收敛到零。
+
+**Proposition 4** *考虑动力学方程（1）以及控制律（6），误差系统的平衡点 $\widetilde{\Omega}=0$ 是（全局）指数稳定的*
+
+**Proof:** 闭环系统的方程为
+
+$$
+\dot{\widetilde{\Omega}} = \Omega - \Omega_r
+$$
+根据控制律（6）可得
+$$
+\dot{\widetilde{\Omega}} = -\frac{k}{I}\widetilde{\Omega}
+$$
+现考虑以下候选李雅普诺夫函数
+$$
+V \triangleq \frac{1}{2} |\widetilde{\Omega}|^2 = \frac{1}{2} \widetilde{\Omega}^T\widetilde{\Omega}
+$$
+对 $V$ 求导
+$$
+\begin{align*}
+\dot{V} &= \widetilde{\Omega}^T \dot{\widetilde{\Omega}}\\
+        &= -\frac{k}{I} \widetilde{\Omega}^T\widetilde{\Omega}\\
+        &= -\frac{k}{I} |\widetilde{\Omega}|^2
+\end{align*}
+$$
+根据定理4.10（参考文献1）可知，平衡点 $\widetilde{\Omega} = 0$ 是全局指数稳定 -->
+
+## Simulation Results
+
+<!-- 在本节中，我们通过仿真验证控制器的有效性。
+* **Simulation 1** - 当参数不存在不确定性，开环和闭环响应对比
+![](微信图片_20250323145101.png)
+![](微信图片_20250323145233.png)
+* **Simulation 2** - 当参数存在不确定性，闭环响应对比
+![](微信图片_20250323150353.png) -->
+
+<!-- ## Conclusion
+
+本文对动力电调的开环和闭环系统进行稳定性分析。然而稳定性只是最基本的问题，在此之上进一步考虑鲁棒性、扰动抑制等问题，以及在工程中遇到的问题如何抽象成控制目标进行分析。 -->
+
+## Reference
+
+<!-- [1] H. Khalil, *Nonlinear Systems 3rd edition.* New Jersey: Prentice Hall, 2002. -->
