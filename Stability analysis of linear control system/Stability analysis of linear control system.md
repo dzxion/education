@@ -104,20 +104,20 @@ R = exp(\theta a_{\times}),log(R)=\theta a_{\times},cos(\theta)= \frac{1}{2}(tr(
 $$ -->
 
 ### Dynamic
-<!-- 系统动力学表示如下：
+系统动力学表示如下：
 $$
 \begin{equation}
 \begin{aligned}
-\dot{x} &= v\\
-m\dot{v} &= -TRe_3 + mge_3\\
-\dot{R} &= Rsk(\Omega)\\
-I\dot{\Omega} &= -\Omega \times I\Omega + \Gamma
+\dot{x} &= u\\
+% m\dot{v} &= -TRe_3 + mge_3\\
+% \dot{R} &= Rsk(\Omega)\\
+% I\dot{\Omega} &= -\Omega \times I\Omega + \Gamma
 % \tag{2.1}
 \end{aligned}
 % \label{eq:energy-mass}
 \end{equation}
 $$
-通过欧拉角 $\xi=(yaw(\psi),pitch(\theta),roll(\phi))$定义机体系相对于世界系的姿态$R$。
+<!-- 通过欧拉角 $\xi=(yaw(\psi),pitch(\theta),roll(\phi))$定义机体系相对于世界系的姿态$R$。
 $$
 \begin{equation}
 \begin{aligned}
@@ -166,19 +166,19 @@ $$
 
 ## Control Design
 
-<!-- 飞行器的控制目标：
-* 位置误差镇定
+控制目标：
+* 误差镇定
 
-定义参考位置 $x_r$ 及其导数 $v_r = \dot{x}_r$，误差位置变量 $\widetilde{x} = x - x_r$，假设速度 $v$ 为虚拟控制变量，定义控制参数$k>0$，控制律设计如下：
+定义参考状态 $x_r$ 及其导数 $\dot{x}_r$，误差位置变量 $\widetilde{x} = x - x_r$，定义控制参数$k>0$，控制律设计如下：
 $$
 \begin{equation}
 \begin{aligned}
-v = -k\widetilde{x} + v_r\\
+u = -k\widetilde{x} + \dot{x}_r\\
 \end{aligned}
 \end{equation}
 % \tag{3.1}
 $$
-* 速度误差镇定
+<!-- * 速度误差镇定
 
 定义参考速度 $v_r$ 及其导数 $a_r = \dot{v}_r$，误差速度变量 $\widetilde{v} = v - v_r$，假设推力 $T$ 和旋转矩阵 $R$ 为虚拟控制变量，定义控制参数$k>0$，控制律设计如下：
 $$
