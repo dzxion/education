@@ -572,7 +572,28 @@ Vector2f AC_P_2D::update_all(Vector2p &target, const Vector2p &measurement)
 }
 ```
 
-#### 位置控制
+#### AttitudeControl
+
+```c++
+//不管plane还是copter都是调这个接口
+void AC_AttitudeControl_Multi::set_throttle_out(float throttle_in, bool apply_angle_boost, float filter_cutoff)
+{
+    _throttle_in = throttle_in;
+    update_althold_lean_angle_max(throttle_in);
+    _motors.set_throttle_filter_cutoff(filter_cutoff);
+    if (apply_angle_boost) {
+        // Apply angle boost
+        throttle_in = get_throttle_boosted(throttle_in);
+    } else {
+        // Clear angle_boost for logging purposes
+        _angle_boost = 0.0f;
+    }
+    _motors.set_throttle(throttle_in);
+    _motors.set_throttle_avg_max(get_throttle_avg_max(MAX(throttle_in, _throttle_in)));
+}
+```
+
+#### PosControl
 
 ```c++
 // Runs the NE-axis position controller, computing output acceleration from position and velocity errors.
@@ -1873,6 +1894,632 @@ TEC3包（在_update_throttle_with_airspeed中调用记录）
 |I|_integTHR_state，油门控制积分量|
 |Emin|SPE_err_min，势能误差最小值|
 |Emax|SPE_err_max，势能误差最大值|
+
+#### plane
+
+```c++
+/* Set the flight control servos based on the current calculated values
+
+  This function operates by first building up output values for
+  channels using set_servo() and set_radio_out(). Using
+  set_radio_out() is for when a raw PWM value of output is given which
+  does not depend on any output scaling. Using set_servo() is for when
+  scaling and mixing will be needed.
+
+  Finally servos_output() is called to push the final PWM values
+  for output channels
+*/
+void Plane::set_servos(void)
+{
+    // start with output corked. the cork is released when we run
+    // servos_output(), which is run from all code paths in this
+    // function
+    SRV_Channels::cork();
+    
+    // this is to allow the failsafe module to deliberately crash 
+    // the plane. Only used in extreme circumstances to meet the
+    // OBC rules
+#if AP_ADVANCEDFAILSAFE_ENABLED
+    if (afs.should_crash_vehicle()) {
+        afs.terminate_vehicle();
+        if (!afs.terminating_vehicle_via_landing()) {
+            return;
+        }
+    }
+#endif
+
+    // do any transition updates for quadplane
+#if HAL_QUADPLANE_ENABLED
+    quadplane.update();//vtol在这里进入角速度环
+#endif
+
+    if (control_mode == &mode_auto && auto_state.idle_mode) {
+        // special handling for balloon launch
+        set_servos_idle();
+        servos_output();
+        return;
+    }
+
+    /*
+      see if we are doing ground steering.
+     */
+    if (!steering_control.ground_steering) {
+        // we are not at an altitude for ground steering. Set the nose
+        // wheel to the rudder just in case the barometer has drifted
+        // a lot
+        steering_control.steering = steering_control.rudder;
+    } else if (!SRV_Channels::function_assigned(SRV_Channel::k_steering)) {
+        // we are within the ground steering altitude but don't have a
+        // dedicated steering channel. Set the rudder to the ground
+        // steering output
+        steering_control.rudder = steering_control.steering;
+    }
+
+    // clear ground_steering to ensure manual control if the yaw stabilizer doesn't run
+    steering_control.ground_steering = false;
+
+    if (control_mode == &mode_training) {
+        steering_control.rudder = rudder_in_expo(false);
+    }
+    
+    SRV_Channels::set_output_scaled(SRV_Channel::k_rudder, steering_control.rudder);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_steering, steering_control.steering);
+
+    if (control_mode == &mode_manual) {
+        set_servos_manual_passthrough();
+    } else {
+        set_servos_controlled();//手动模式的油门设置
+    }
+
+    // setup flap outputs
+    set_servos_flaps();
+
+#if AP_LANDINGGEAR_ENABLED
+    // setup landing gear output
+    set_landing_gear();
+#endif
+
+    // set airbrake outputs
+    airbrake_update();
+
+    // slew rate limit throttle
+    throttle_slew_limit(SRV_Channel::k_throttle);
+
+    int8_t min_throttle = 0;
+#if AP_ICENGINE_ENABLED
+    if (g2.ice_control.allow_throttle_while_disarmed()) {
+        min_throttle = MAX(aparm.throttle_min.get(), 0);
+    }
+    const float base_throttle = SRV_Channels::get_output_scaled(SRV_Channel::k_throttle);
+#endif
+
+    if (!arming.is_armed()) {
+        //Some ESCs get noisy (beep error msgs) if PWM == 0.
+        //This little segment aims to avoid this.
+        switch (arming.arming_required()) { 
+        case AP_Arming::Required::NO:
+            //keep existing behavior: do nothing to radio_out
+            //(don't disarm throttle channel even if AP_Arming class is)
+            break;
+
+        case AP_Arming::Required::YES_ZERO_PWM:
+            SRV_Channels::set_output_pwm(SRV_Channel::k_throttle, 0);
+            SRV_Channels::set_output_pwm(SRV_Channel::k_throttleLeft, 0);
+            SRV_Channels::set_output_pwm(SRV_Channel::k_throttleRight, 0);
+            break;
+
+        case AP_Arming::Required::YES_MIN_PWM:
+        default:
+            SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, min_throttle);
+            SRV_Channels::set_output_scaled(SRV_Channel::k_throttleLeft, min_throttle);
+            SRV_Channels::set_output_scaled(SRV_Channel::k_throttleRight, min_throttle);
+            break;
+        }
+    }
+
+#if AP_ICENGINE_ENABLED
+    float override_pct = SRV_Channels::get_output_scaled(SRV_Channel::k_throttle);
+    if (g2.ice_control.throttle_override(override_pct, base_throttle)) {
+        // the ICE controller wants to override the throttle for starting, idle, or redline
+        SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, override_pct);
+#if HAL_QUADPLANE_ENABLED
+        quadplane.vel_forward.integrator = 0;
+#endif
+    }
+#endif  // AP_ICENGINE_ENABLED
+
+    // run output mixer and send values to the hal for output
+    servos_output();//fw模式在这里进角速度环
+}
+
+/*
+  setup output channels all non-manual modes
+ */
+void Plane::set_servos_controlled(void)
+{
+    if (flight_stage == AP_FixedWing::FlightStage::LAND) {
+        // allow landing to override servos if it would like to
+        landing.override_servos();
+    }
+
+    // convert 0 to 100% (or -100 to +100) into PWM
+    int8_t min_throttle = aparm.throttle_min.get();
+    int8_t max_throttle = aparm.throttle_max.get();
+
+#if AP_ICENGINE_ENABLED
+    // apply idle governor
+    g2.ice_control.update_idle_governor(min_throttle);
+#endif
+
+    if (min_throttle < 0 && !allow_reverse_thrust()) {
+        // reverse thrust is available but inhibited.
+        min_throttle = 0;
+    }
+
+    bool flight_stage_determines_max_throttle = false;
+    if (flight_stage == AP_FixedWing::FlightStage::TAKEOFF || 
+        flight_stage == AP_FixedWing::FlightStage::ABORT_LANDING
+        ) {
+        flight_stage_determines_max_throttle = true;
+    }
+#if HAL_QUADPLANE_ENABLED
+    if (quadplane.in_transition()) {
+        flight_stage_determines_max_throttle = true;
+    }
+#endif
+    if (flight_stage_determines_max_throttle) {
+        if (aparm.takeoff_throttle_max != 0) {
+            max_throttle = aparm.takeoff_throttle_max;
+        } else {
+            max_throttle = aparm.throttle_max;
+        }
+    } else if (landing.is_flaring()) {
+        min_throttle = 0;
+    }
+
+    // conpensate for battery voltage drop
+    throttle_voltage_comp(min_throttle, max_throttle);
+
+    // apply watt limiter
+    throttle_watt_limiter(min_throttle, max_throttle);
+
+    SRV_Channels::set_output_scaled(SRV_Channel::k_throttle,
+                                    constrain_float(SRV_Channels::get_output_scaled(SRV_Channel::k_throttle), min_throttle, max_throttle));
+    
+    if (!arming.is_armed_and_safety_off()) {
+        if (arming.arming_required() == AP_Arming::Required::YES_ZERO_PWM) {
+            SRV_Channels::set_output_limit(SRV_Channel::k_throttle, SRV_Channel::Limit::ZERO_PWM);
+            SRV_Channels::set_output_limit(SRV_Channel::k_throttleLeft, SRV_Channel::Limit::ZERO_PWM);
+            SRV_Channels::set_output_limit(SRV_Channel::k_throttleRight, SRV_Channel::Limit::ZERO_PWM);
+        } else {
+            SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, 0.0);
+            SRV_Channels::set_output_scaled(SRV_Channel::k_throttleLeft, 0.0);
+            SRV_Channels::set_output_scaled(SRV_Channel::k_throttleRight, 0.0);
+        }
+    } else if (suppress_throttle()) {
+        SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, 0.0); // default
+        // throttle is suppressed (above) to zero in final flare in auto mode, but we allow instead thr_min if user prefers, eg turbines:
+        if (landing.is_flaring() && landing.use_thr_min_during_flare() ) {
+            SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, aparm.throttle_min.get());
+        }
+        if (g.throttle_suppress_manual) {
+            // manual pass through of throttle while throttle is suppressed
+            SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, get_throttle_input(true));
+        }
+#if AP_SCRIPTING_ENABLED
+    } else if (nav_scripting_active()) {
+            SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, plane.nav_scripting.throttle_pct);
+#endif
+    } else if (control_mode == &mode_stabilize ||
+               control_mode == &mode_training ||
+               control_mode == &mode_acro ||
+               control_mode == &mode_fbwa ||
+               control_mode == &mode_autotune) {
+        // a manual throttle mode
+        if (!rc().has_valid_input()) {
+            SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, 0.0);
+        } else if (g.throttle_passthru_stabilize) {
+            // manual pass through of throttle while in FBWA or
+            // STABILIZE mode with THR_PASS_STAB set
+            SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, get_throttle_input(true));
+        } else {
+            // get throttle, but adjust center to output TRIM_THROTTLE if flight option set
+            SRV_Channels::set_output_scaled(SRV_Channel::k_throttle,
+                                            constrain_int16(get_adjusted_throttle_input(true), min_throttle, max_throttle));
+        }
+    } else if (control_mode->is_guided_mode() &&
+               guided_throttle_passthru) {
+        // manual pass through of throttle while in GUIDED
+        SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, get_throttle_input(true));
+#if HAL_QUADPLANE_ENABLED
+    } else if (quadplane.in_vtol_mode()) {
+        float fwd_thr = 0;
+        // if armed and not spooled down ask quadplane code for forward throttle
+        if (quadplane.motors->armed() &&
+            quadplane.motors->get_desired_spool_state() != AP_Motors::DesiredSpoolState::SHUT_DOWN) {
+
+            fwd_thr = constrain_float(quadplane.forward_throttle_pct(), min_throttle, max_throttle);
+        }
+        SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, fwd_thr);
+#endif  // HAL_QUADPLANE_ENABLED
+    }
+
+    // let EKF know to start GSF yaw estimator before takeoff movement starts so that yaw angle is better estimated
+    const float throttle = SRV_Channels::get_output_scaled(SRV_Channel::k_throttle);
+    if (!is_flying() && arming.is_armed()) {
+        // Check if rate of change of velocity along X axis exceeds 1-g which normally indicates a throw.
+        // Tests with hand carriage of micro UAS indicates that a 1-g threshold does not false trigger prior
+        // to the throw, but there is margin to increase this threshold if false triggering becomes problematic.
+        const float accel_x_due_to_gravity = GRAVITY_MSS * ahrs.sin_pitch();
+        const float accel_x_due_to_throw = ahrs.get_accel().x - accel_x_due_to_gravity;
+        bool throw_detected = accel_x_due_to_throw > GRAVITY_MSS;
+        bool throttle_up_detected = throttle > aparm.throttle_cruise;
+        if (throw_detected || throttle_up_detected) {
+            plane.ahrs.set_takeoff_expected(true);
+        }
+    }
+}
+
+/*
+  handle speed and height control in FBWB, CRUISE, and optionally, LOITER mode.
+  In this mode the elevator is used to change target altitude. The
+  throttle is used to change target airspeed or throttle
+ */
+void Plane::update_fbwb_speed_height(void)
+{
+    uint32_t now = micros();
+    if (now - target_altitude.last_elev_check_us >= 100000) {
+        // we don't run this on every loop as it would give too small granularity on quadplanes at 300Hz, and
+        // give below 1cm altitude change, which would result in no climb or descent
+        float dt = (now - target_altitude.last_elev_check_us) * 1.0e-6;
+        dt = constrain_float(dt, 0.1, 0.15);
+
+        target_altitude.last_elev_check_us = now;
+
+        // 1. 获取俯仰摇杆输入（-1..1）
+        float elevator_input = channel_pitch->get_control_in() * (1/4500.0);
+
+        if (g.flybywire_elev_reverse) {
+            elevator_input = -elevator_input;
+        }
+        // 3. 设置目标高度
+        int32_t alt_change_cm = g.flybywire_climb_rate * elevator_input * dt * 100;
+        change_target_altitude(alt_change_cm);
+
+        if (is_zero(elevator_input) && !is_zero(target_altitude.last_elevator_input)) {
+            // the user has just released the elevator, lock in
+            // the current altitude
+            set_target_altitude_current();
+        }
+
+#if HAL_SOARING_ENABLED
+        if (g2.soaring_controller.is_active()) {
+            if (g2.soaring_controller.get_throttle_suppressed()) {
+                // we're in soaring mode with throttle suppressed
+                set_target_altitude_current();
+            } else {
+                // we're in soaring mode climbing back to altitude. Set target to SOAR_ALT_CUTOFF plus 10m to ensure we positively climb
+                // through SOAR_ALT_CUTOFF, thus triggering throttle suppression and return to glide.
+                target_altitude.amsl_cm = 100*plane.g2.soaring_controller.get_alt_cutoff() + 1000 + AP::ahrs().get_home().alt;
+            }
+        }
+#endif
+
+        target_altitude.last_elevator_input = elevator_input;
+    }
+
+    check_fbwb_altitude();
+
+    altitude_error_cm = calc_altitude_error_cm();
+
+    calc_throttle();
+    calc_nav_pitch();
+}
+
+void Plane::calc_airspeed_errors()
+{
+    // Get the airspeed_estimate, update smoothed airspeed estimate
+    // NOTE:  we use the airspeed estimate function not direct sensor
+    //        as TECS may be using synthetic airspeed
+    // 1. 获取空速估计值，更新平滑空速
+    float airspeed_measured = 0.1;
+    if (ahrs.airspeed_estimate(airspeed_measured)) {
+        smoothed_airspeed = MAX(0.1, smoothed_airspeed * 0.8f + airspeed_measured * 0.2f);
+    }
+
+    // low pass filter speed scaler, with 1Hz cutoff, at 10Hz
+    const float speed_scaler = calc_speed_scaler();
+    const float cutoff_Hz = 2.0;
+    const float dt = 0.1;
+    surface_speed_scaler += calc_lowpass_alpha_dt(dt, cutoff_Hz) * (speed_scaler - surface_speed_scaler);
+
+
+    // FBW_B/cruise airspeed target
+    // 3. FBWB/CRUISE 模式：摇杆 → 空速映射
+    if (!failsafe.rc_failsafe && (control_mode == &mode_fbwb || control_mode == &mode_cruise)) {
+        if (g2.flight_options & FlightOptions::CRUISE_TRIM_AIRSPEED) {// 选项1：强制巡航空速（忽略摇杆）
+            target_airspeed_cm = aparm.airspeed_cruise_cm;
+        } else if (g2.flight_options & FlightOptions::CRUISE_TRIM_THROTTLE) {// 选项2：摇杆控制油门（无空速传感器时）
+            float control_min = 0.0f;
+            float control_mid = 0.0f;
+            const float control_max = channel_throttle->get_range();
+            // 根据摇杆位置线性插值目标油门（作为空速代理）
+            // 摇杆低位 → 接近 ARSPD_MIN，摇杆高位 → 接近 ARSPD_MAX
+            const float control_in = get_throttle_input();
+            switch (channel_throttle->get_type()) {
+            case RC_Channel::ControlType::ANGLE:
+                    control_min = -control_max;
+                    break;
+            case RC_Channel::ControlType::RANGE:
+                    control_mid = channel_throttle->get_control_mid();
+                    break;
+            }
+            if (control_in <= control_mid) {
+                target_airspeed_cm = linear_interpolate(aparm.airspeed_min * 100, aparm.airspeed_cruise_cm,
+                                                        control_in,
+                                                        control_min, control_mid);
+            } else {
+                target_airspeed_cm = linear_interpolate(aparm.airspeed_cruise_cm, aparm.airspeed_max * 100,
+                                                        control_in,
+                                                        control_mid, control_max);
+            }
+        } else {// 选项3：默认模式（有空速传感器）
+            // ★ 线性映射：摇杆位置 → 空速目标
+            target_airspeed_cm = ((int32_t)(aparm.airspeed_max - aparm.airspeed_min) *
+                                  get_throttle_input()) + ((int32_t)aparm.airspeed_min * 100);
+        }
+#if OFFBOARD_GUIDED == ENABLED
+    } else if (control_mode == &mode_guided && guided_state.target_airspeed_cm >  0.0) {// 4. GUIDED 模式：外部空速指令
+         // if offbd guided speed change cmd not set, then this section is skipped
+        // offboard airspeed demanded
+        uint32_t now = AP_HAL::millis();
+        float delta = 1e-3f * (now - guided_state.target_airspeed_time_ms);
+        guided_state.target_airspeed_time_ms = now;
+        float delta_amt = 100 * delta * guided_state.target_airspeed_accel;
+        target_airspeed_cm += delta_amt;
+
+        //target_airspeed_cm recalculated then clamped to between MIN airspeed and MAX airspeed by constrain_float
+        if (is_positive(guided_state.target_airspeed_accel)) {
+            target_airspeed_cm = constrain_float(MIN(guided_state.target_airspeed_cm, target_airspeed_cm), aparm.airspeed_min *100, aparm.airspeed_max *100);
+        } else {
+            target_airspeed_cm = constrain_float(MAX(guided_state.target_airspeed_cm, target_airspeed_cm), aparm.airspeed_min *100, aparm.airspeed_max *100);
+        }
+
+#endif // OFFBOARD_GUIDED == ENABLED
+
+#if HAL_SOARING_ENABLED
+    } else if (g2.soaring_controller.is_active() && g2.soaring_controller.get_throttle_suppressed()) {
+        if (control_mode == &mode_thermal) {
+            float arspd = g2.soaring_controller.get_thermalling_target_airspeed();
+
+            if (arspd > 0) {
+                target_airspeed_cm = arspd * 100;
+            } else {
+                target_airspeed_cm = aparm.airspeed_cruise_cm;
+            }
+        } else if (control_mode == &mode_auto) {
+            float arspd = g2.soaring_controller.get_cruising_target_airspeed();
+
+            if (arspd > 0) {
+                target_airspeed_cm = arspd * 100;
+            } else {
+                target_airspeed_cm = aparm.airspeed_cruise_cm;
+            }
+        }
+#endif
+
+    } else if (flight_stage == AP_FixedWing::FlightStage::LAND) {
+        // Landing airspeed target
+        target_airspeed_cm = landing.get_target_airspeed_cm();
+    } else if (control_mode == &mode_guided && new_airspeed_cm > 0) { //DO_CHANGE_SPEED overrides onboard guided speed commands, user would have re-enter guided mode to revert
+                       target_airspeed_cm = new_airspeed_cm;
+    } else if (control_mode == &mode_auto) {
+        target_airspeed_cm = mode_auto_target_airspeed_cm();
+#if HAL_QUADPLANE_ENABLED
+    } else if (control_mode == &mode_qrtl && quadplane.in_vtol_land_approach()) {
+        target_airspeed_cm = quadplane.get_land_airspeed() * 100;
+#endif
+    } else {
+        // Normal airspeed target for all other cases
+        target_airspeed_cm = aparm.airspeed_cruise_cm;
+    }
+
+    // Set target to current airspeed + ground speed undershoot,
+    // but only when this is faster than the target airspeed commanded
+    // above.
+    if (control_mode->does_auto_throttle() &&
+    	aparm.min_gndspeed_cm > 0 &&
+    	control_mode != &mode_circle) {
+        int32_t min_gnd_target_airspeed = airspeed_measured*100 + groundspeed_undershoot;
+        if (min_gnd_target_airspeed > target_airspeed_cm) {
+            target_airspeed_cm = min_gnd_target_airspeed;
+        }
+    }
+
+    // when using the special GUIDED mode features for slew control, don't allow airspeed nudging as it doesn't play nicely.
+#if OFFBOARD_GUIDED == ENABLED
+    if (control_mode == &mode_guided && !is_zero(guided_state.target_airspeed_cm) && (airspeed_nudge_cm != 0)) {
+        airspeed_nudge_cm = 0; //airspeed_nudge_cm forced to zero
+    }
+#endif
+
+    // Bump up the target airspeed based on throttle nudging
+    if (control_mode->allows_throttle_nudging() && airspeed_nudge_cm > 0) {
+        target_airspeed_cm += airspeed_nudge_cm;
+    }
+
+    // Apply airspeed limit
+    target_airspeed_cm = constrain_int32(target_airspeed_cm, aparm.airspeed_min*100, aparm.airspeed_max*100);
+
+    // use the TECS view of the target airspeed for reporting, to take
+    // account of the landing speed
+    // 11. 更新空速误差
+    airspeed_error = TECS_controller.get_target_airspeed() - airspeed_measured;
+}
+```
+
+#### quadplane
+
+```c++
+/*
+  output motors and do any copter needed
+ */
+void QuadPlane::motors_output(bool run_rate_controller)
+{
+    /* Delay for ARMING_DELAY_MS after arming before allowing props to spin:
+       1) for safety (OPTION_DELAY_ARMING)
+       2) to allow motors to return to vertical (OPTION_DISARMED_TILT)
+     */
+    if (option_is_set(QuadPlane::OPTION::DISARMED_TILT) || option_is_set(QuadPlane::OPTION::DELAY_ARMING)) {
+        if (plane.arming.get_delay_arming()) {
+            // delay motor start after arming
+            set_desired_spool_state(AP_Motors::DesiredSpoolState::SHUT_DOWN);
+            motors->output();
+            return;
+        }
+    }
+
+#if AP_ADVANCEDFAILSAFE_ENABLED
+    if (!plane.arming.is_armed_and_safety_off() ||
+        (plane.afs.should_crash_vehicle() && !plane.afs.terminating_vehicle_via_landing()) ||
+         SRV_Channels::get_emergency_stop()) {
+#else
+    if (!plane.arming.is_armed_and_safety_off() || SRV_Channels::get_emergency_stop()) {
+#endif
+        set_desired_spool_state(AP_Motors::DesiredSpoolState::SHUT_DOWN);
+        motors->output();
+        return;
+    }
+    if (esc_calibration && AP_Notify::flags.esc_calibration && plane.control_mode == &plane.mode_qstabilize) {
+        // output is direct from run_esc_calibration()
+        return;
+    }
+
+    const uint32_t now = AP_HAL::millis();
+    if (tailsitter.in_vtol_transition(now) && !assisted_flight) {
+        /*
+          don't run the motor outputs while in tailsitter->vtol
+          transition. That is taken care of by the fixed wing
+          stabilisation code
+         */
+        return;
+    }
+
+    if (run_rate_controller) {
+        if (now - last_att_control_ms > 100) {
+            // relax if have been inactive
+            relax_attitude_control();
+        }
+        // run low level rate controllers that only require IMU data and set loop time
+        const float last_loop_time_s = AP::scheduler().get_last_loop_time_s();
+        motors->set_dt(last_loop_time_s);
+        attitude_control->set_dt(last_loop_time_s);
+        pos_control->set_dt(last_loop_time_s);
+        attitude_control->rate_controller_run();
+        last_att_control_ms = now;
+    }
+
+    // see if motors should be shut down
+    update_throttle_suppression();
+
+    motors->output();
+
+    // remember when motors were last active for throttle suppression
+    if (motors->get_throttle() > 0.01f || tiltrotor.motors_active()) {
+        last_motors_active_ms = now;
+    }
+
+}
+
+/*
+  get overall desired yaw rate in cd/s
+ */
+float QuadPlane::get_desired_yaw_rate_cds(bool should_weathervane)
+{
+    float yaw_cds = 0;
+    // 2. 如果处于辅助飞行模式，添加自动偏航率（来自导航）
+    if (assisted_flight) {
+        // use bank angle to get desired yaw rate
+        yaw_cds += desired_auto_yaw_rate_cds();
+    }
+
+    // add in pilot input
+    // 3. 添加飞行员偏航输入（方向舵）
+    yaw_cds += get_pilot_input_yaw_rate_cds();
+
+    // 4. 添加天气风向补偿（Weathervaning）
+    if (should_weathervane) {
+        // add in weathervaning
+        yaw_cds += get_weathervane_yaw_rate_cds();
+    }
+    
+    return yaw_cds;
+}
+```
+
+#### mode
+
+|channel|function|
+| :-----: | :-----: |
+|roll（fbwa）|ModeFBWA::update|
+|pitch（fbwa）|ModeFBWA::update|
+|throttle（fbwa）|Plane::set_servos_controlled|
+|yaw（fbwa）|QuadPlane::get_desired_yaw_rate_cds|
+|roll（fbwb）|ModeFBWB::update|
+|pitch（fbwb）|Plane::update_fbwb_speed_height|
+|throttle（fbwb）|Plane::calc_airspeed_errors|
+|yaw（fbwb）|QuadPlane::get_desired_yaw_rate_cds|
+
+##### fbwa
+
+```c++
+void ModeFBWA::update()
+{
+    // set nav_roll and nav_pitch using sticks
+    // 1. 计算目标滚转角
+    //    摇杆位置（-1..1）× 最大滚转角限制 = 目标滚转角
+    plane.nav_roll_cd  = plane.channel_roll->norm_input() * plane.roll_limit_cd;
+    plane.update_load_factor();
+    // 3. 计算目标俯仰角
+    float pitch_input = plane.channel_pitch->norm_input();
+    if (pitch_input > 0) {
+        // 拉杆：抬头，使用最大俯仰角限制
+        plane.nav_pitch_cd = pitch_input * plane.aparm.pitch_limit_max_cd;
+    } else {
+        // 推杆：低头，使用最小俯仰角限制
+        plane.nav_pitch_cd = -(pitch_input * plane.pitch_limit_min_cd);
+    }
+    plane.adjust_nav_pitch_throttle();
+    plane.nav_pitch_cd = constrain_int32(plane.nav_pitch_cd, plane.pitch_limit_min_cd, plane.aparm.pitch_limit_max_cd.get());
+    if (plane.fly_inverted()) {
+        plane.nav_pitch_cd = -plane.nav_pitch_cd;
+    }
+    if (plane.failsafe.rc_failsafe && plane.g.fs_action_short == FS_ACTION_SHORT_FBWA) {
+        // FBWA failsafe glide
+        plane.nav_roll_cd = 0;
+        plane.nav_pitch_cd = 0;
+        SRV_Channels::set_output_limit(SRV_Channel::k_throttle, SRV_Channel::Limit::MIN);
+    }
+    RC_Channel *chan = rc().find_channel_for_option(RC_Channel::AUX_FUNC::FBWA_TAILDRAGGER);
+    if (chan != nullptr) {
+        // check for the user enabling FBWA taildrag takeoff mode
+        bool tdrag_mode = chan->get_aux_switch_pos() == RC_Channel::AuxSwitchPos::HIGH;
+        if (tdrag_mode && !plane.auto_state.fbwa_tdrag_takeoff_mode) {
+            if (plane.auto_state.highest_airspeed < plane.g.takeoff_tdrag_speed1) {
+                plane.auto_state.fbwa_tdrag_takeoff_mode = true;
+                plane.gcs().send_text(MAV_SEVERITY_WARNING, "FBWA tdrag mode");
+            }
+        }
+    }
+}
+```
+
+##### fbwb
+fbwb油门设置路径
+Plane::update_control_mode -> ModeFBWB::update -> Plane::update_fbwb_speed_height -> Plane::calc_throttle -> SRV_Channels::set_output_scaled
+```c++
+
+```
 
 ## 算法
 
